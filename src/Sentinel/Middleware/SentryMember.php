@@ -1,9 +1,8 @@
 <?php namespace Sentinel\Middleware;
 
-use Closure, Session, Sentry;
-use Illuminate\Contracts\Routing\Middleware;
+use Closure, Sentry, Session;
 
-class SentryAdminAccess
+class SentryMember
 {
 
     /**
@@ -11,11 +10,11 @@ class SentryAdminAccess
      *
      * @param  \Illuminate\Http\Request $request
      * @param  \Closure $next
+     * @param string $group
      * @return mixed
      */
-    public function handle($request, Closure $next)
+    public function handle($request, Closure $next, $group)
     {
-        // First make sure there is an active session
         if (!Sentry::check()) {
             if ($request->ajax()) {
                 return response('Unauthorized.', 401);
@@ -24,8 +23,11 @@ class SentryAdminAccess
             }
         }
 
-        // Now check to see if the current user has the 'admin' permission
-        if (!Sentry::getUser()->hasAccess('admin')) {
+        // Find the specified group
+        $group = Sentry::findGroupByName($group);
+
+        // Now check to see if the current user is a member of the specified group
+        if (!Sentry::getUser()->inGroup($group)) {
             if ($request->ajax()) {
                 return response('Unauthorized.', 401);
             } else {
@@ -35,7 +37,6 @@ class SentryAdminAccess
             }
         }
 
-        // All clear - we are good to move forward
         return $next($request);
     }
 
